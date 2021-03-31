@@ -25,6 +25,9 @@
 */Makefile
 */cmake_install.cmake
 .DS_Store
+*.jpg
+*.jpeg
+*.png
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
