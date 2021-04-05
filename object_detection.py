@@ -63,8 +63,21 @@ def create_face_encoding():
                     pickle.dump(face_encoding, f)
 
 
+# def load_face_encodings():
+#     name_encoding_map = dict()
+#     encodings_dir_path = Path('./data/train_faces/face_encodings')
+#     if encodings_dir_path.is_dir():
+#         with os.scandir(encodings_dir_path) as dir:
+#             for entry in dir:
+#                 if entry.is_file() and entry.name.lower().endswith('.pkl'):
+#                     face_name = os.path.splitext(entry.name)[0]
+#                     with open(entry.path, 'rb') as f:
+#                         name_encoding_map[face_name] = pickle.load(f)
+#     return name_encoding_map
+
 def load_face_encodings():
-    name_encoding_map = dict()
+    face_encodings = list()
+    face_names = list()
     encodings_dir_path = Path('./data/train_faces/face_encodings')
     if encodings_dir_path.is_dir():
         with os.scandir(encodings_dir_path) as dir:
@@ -72,8 +85,34 @@ def load_face_encodings():
                 if entry.is_file() and entry.name.lower().endswith('.pkl'):
                     face_name = os.path.splitext(entry.name)[0]
                     with open(entry.path, 'rb') as f:
-                        name_encoding_map[face_name] = pickle.load(f)
-    return name_encoding_map
+                        face_encodings.append(pickle.load(f))
+                        face_names.append(face_name)
+    return {'face_encodings': face_encodings, 'face_names': face_names}
+
+
+def get_face_match_names(test_img_face_locations, test_img_face_encodings, encodings_names):
+    known_encodings = encodings_names['face_encodings']
+    known_names = encodings_names['face_names']
+    test_img_face_names = list()
+    for (top, right, bottom, left), face_encoding in zip(test_img_face_locations, test_img_face_encodings):
+        face_name = 'Unknown'
+        matches = fr.compare_faces(known_encodings, face_encoding)
+        if True in matches:
+            first_match_index = matches.index(True)
+            face_name = known_names[first_match_index]
+        test_img_face_names.append(face_name)
+    return test_img_face_names
+
+
+def draw_rectangles_on_faces(img_mat, face_locations, face_names):
+    font = cv.FONT_HERSHEY_SIMPLEX
+    for (top, right, bottom, left), face_name in zip(face_locations, face_names):
+        cv.rectangle(img_mat, pt1=(left, top), pt2=(right, bottom), color=(255, 0, 0), thickness=2)
+        cv.rectangle(img_mat, pt1=(left, top), pt2=(left + 200, top + 30), color=(0, 255, 255), thickness=-1)
+        cv.putText(img_mat, face_name, (left, top + 20), font, .75, (255, 0, 0), 2)
+    display_img(img_mat=img_mat, delay_in_millsec=4000)
+    # if cv.waitKey(0) == ord('q'):
+        # cv.destroyAllWindows()
 
 
 def main():
@@ -81,10 +120,17 @@ def main():
     # display_img(img_mat, delay_in_millsec=4000)
     # display_video_from_cam()
     # create_face_encoding()
-    name_encoding_map = load_face_encodings()
-    # test_data_path = Path('./data/test_imgs')
-    # test_img = test_data_path / 'u11.jpg'
+    encodings_names = load_face_encodings()
+    test_data_dir_path = Path('./data/test_imgs')
+    test_img_path = test_data_dir_path / 'u11.jpg'
+    test_img_mat = fr.load_image_file(test_img_path)
+    test_img_mat = cv.cvtColor(test_img_mat, cv.COLOR_RGB2BGR)
+    face_locations = fr.face_locations(test_img_mat)
+    face_encodings = fr.face_encodings(test_img_mat, face_locations)
+    test_img_face_names = get_face_match_names(face_locations, face_encodings, encodings_names)
+    draw_rectangles_on_faces(test_img_mat, face_locations, test_img_face_names)
 
+    
 
 if __name__ == '__main__':
     main()
