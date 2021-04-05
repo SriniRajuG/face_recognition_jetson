@@ -51,6 +51,7 @@ def create_face_encoding():
     img_file_extns = ('.jpeg', '.jpg', '.png', '.gif', '.tiff')
     encodings_dir_path = Path('./data/train_faces/face_encodings')
     encodings_dir_path.mkdir(exist_ok=True)
+    # TODO: test that training directory exists and is not empty
     with os.scandir("./data/train_faces") as dir:
         for entry in dir:
             if entry.is_file() and entry.name.lower().endswith(img_file_extns):
@@ -62,11 +63,27 @@ def create_face_encoding():
                     pickle.dump(face_encoding, f)
 
 
+def load_face_encodings():
+    name_encoding_map = dict()
+    encodings_dir_path = Path('./data/train_faces/face_encodings')
+    if encodings_dir_path.is_dir():
+        with os.scandir(encodings_dir_path) as dir:
+            for entry in dir:
+                if entry.is_file() and entry.name.lower().endswith('.pkl'):
+                    face_name = os.path.splitext(entry.name)[0]
+                    with open(entry.path, 'rb') as f:
+                        name_encoding_map[face_name] = pickle.load(f)
+    return name_encoding_map
+
+
 def main():
     # img_mat = read_img_from_file(file_name='./data/puppy.jpg')
     # display_img(img_mat, delay_in_millsec=4000)
     # display_video_from_cam()
-    create_face_encoding()
+    # create_face_encoding()
+    name_encoding_map = load_face_encodings()
+    # test_data_path = Path('./data/test_imgs')
+    # test_img = test_data_path / 'u11.jpg'
 
 
 if __name__ == '__main__':
