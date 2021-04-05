@@ -175,6 +175,12 @@ Thumbs.db #thumbnail cache on Windows
 # profiling data
 .prof
 
+.pkl
+.csv
+.jpg
+.jpeg
+.png
+
 
 ### vscode ###
 .vscode/*
