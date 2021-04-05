@@ -175,6 +175,7 @@ Thumbs.db #thumbnail cache on Windows
 # profiling data
 .prof
 
+.data/
 .pkl
 .csv
 .jpg
