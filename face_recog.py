@@ -130,7 +130,7 @@ def main():
     test_data_dir_path = Path('./data/test_imgs')
     test_img_path = test_data_dir_path / 'u11.jpg'
     test_img_mat = fr.load_image_file(test_img_path)
-    test_img_mat = cv.cvtColor(test_img_mat, cv.COLOR_RGB2BGR)
+    test_img_mat = cv.cvtColor(test_img_mat, cv.COLOR_BGR2RGB)
     test_img_face_locations = fr.face_locations(test_img_mat)
     test_img_face_encodings = fr.face_encodings(
         test_img_mat,
