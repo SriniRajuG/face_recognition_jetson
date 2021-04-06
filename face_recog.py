@@ -85,14 +85,16 @@ def load_face_encodings() -> Tuple[List[np.ndarray], List[str]]:
 
 
 def get_face_match_names(
-        test_img_face_locations,
-        test_img_face_encodings,
-        encodings_names,
+        test_img_face_locations: List[Tuple[int]],
+        test_img_face_encodings: List[np.ndarray],
+        known_encodings: List[np.ndarray],
+        known_names: List[str],
         ):
-    known_encodings = encodings_names['face_encodings']
-    known_names = encodings_names['face_names']
     test_img_face_names = list()
-    for _, face_encoding in zip(test_img_face_locations, test_img_face_encodings):
+    for _, face_encoding in zip(
+            test_img_face_locations,
+            test_img_face_encodings,
+            ):
         face_name = 'Unknown'
         matches = fr.compare_faces(known_encodings, face_encoding)
         if True in matches:
@@ -104,11 +106,19 @@ def get_face_match_names(
 
 def draw_rectangles_on_faces(img_mat, face_locations, face_names):
     font = cv.FONT_HERSHEY_SIMPLEX
-    for (top, right, bottom, left), face_name in zip(face_locations, face_names):
-        cv.rectangle(img_mat, pt1=(left, top), pt2=(right, bottom), color=(255, 0, 0), thickness=2)
-        cv.rectangle(img_mat, pt1=(left, top), pt2=(left + 200, top + 30), color=(0, 255, 255), thickness=-1)
-        cv.putText(img_mat, face_name, (left, top + 20), font, .75, (255, 0, 0), 2)
-    display_img(img_mat=img_mat, delay_in_millsec=4000)
+    for (top, right, bottom, left), face_name in zip(
+            face_locations,
+            face_names,
+            ):
+        blue = (255, 0, 0)
+        yellow = (0, 255, 255)
+        cv.rectangle(img_mat, pt1=(left, top), pt2=(right, bottom), 
+            color=blue, thickness=2)
+        cv.rectangle(img_mat, pt1=(left, top), pt2=(left + 200, top + 30), 
+            color=yellow, thickness=-1)
+        cv.putText(img_mat, text=face_name, org=(left, top + 20), 
+            fontScale=0.75, fontFace=font, color=blue, thickness=2)
+    display_img(img_mat=img_mat, delay_in_millsec=1000)
 
 
 def main():
@@ -121,10 +131,22 @@ def main():
     test_img_path = test_data_dir_path / 'u11.jpg'
     test_img_mat = fr.load_image_file(test_img_path)
     test_img_mat = cv.cvtColor(test_img_mat, cv.COLOR_RGB2BGR)
-    face_locations = fr.face_locations(test_img_mat)
-    face_encodings = fr.face_encodings(test_img_mat, face_locations)
-    test_img_face_names = get_face_match_names(face_locations, face_encodings, encodings_names)
-    draw_rectangles_on_faces(test_img_mat, face_locations, test_img_face_names)
+    test_img_face_locations = fr.face_locations(test_img_mat)
+    test_img_face_encodings = fr.face_encodings(
+        test_img_mat,
+        test_img_face_locations,
+    )
+    test_img_face_names = get_face_match_names(
+        test_img_face_locations,
+        test_img_face_encodings,
+        known_encodings,
+        known_names,
+    )
+    draw_rectangles_on_faces(
+        test_img_mat,
+        test_img_face_locations,
+        test_img_face_names,
+    )
 
 
 if __name__ == '__main__':
