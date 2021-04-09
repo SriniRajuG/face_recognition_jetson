@@ -118,7 +118,7 @@ def draw_rectangles_on_faces(img_mat, face_locations, face_names):
             color=yellow, thickness=-1)
         cv.putText(img_mat, text=face_name, org=(left, top + 20), 
             fontScale=0.75, fontFace=font, color=blue, thickness=2)
-    display_img(img_mat=img_mat, delay_in_millsec=1000)
+    display_img(img_mat=img_mat, delay_in_millsec=5000)
 
 
 def main():

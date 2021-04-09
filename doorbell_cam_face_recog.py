@@ -1,3 +1,6 @@
+# gst: gstreamer
+# img: image
+
 import datetime as dt
 import os
 from pathlib import Path
@@ -10,8 +13,35 @@ import face_recognition as fr
 import numpy as np
 
 
+def create_face_encoding():
+    """
+    - Load images from a directory with training images.
+    - Generate encoding for each face.
+    - Persist the encodings and metadatas as a pickle file.
+    """
+    img_file_extns = ('.jpeg', '.jpg', '.png', '.gif', '.tiff')
+    out_filepath = Path('./data/pi_cam/known_faces.pkl')
+    # TODO: check that training directory exists and is not empty
+    known_encodings = list()
+    known_metadatas = list()
+    with os.scandir("./data/pi_cam/train_faces") as dir:
+        for entry in dir:
+            if entry.is_file() and entry.name.lower().endswith(img_file_extns):
+                face_label = os.path.splitext(entry.name)[0]
+                img = fr.load_image_file(entry.path)
+                face_encoding = fr.face_encodings(img)[0]
+                small_img = cv.resize(img, (150, 150))
+                known_encodings.append(face_encoding)
+                known_metadatas.append({
+                    'face_img': small_img,
+                    'face_label': face_label,
+                })
+    with open(out_filepath, 'wb') as f:
+        pickle.dump((known_encodings, known_metadatas), f)
+
+
 def load_face_encodings() -> Tuple[List[np.ndarray], List[Dict]]:
-    encodings_file_path = './data/known_faces.dat'
+    encodings_file_path = Path('./data/pi_cam/known_faces.pkl')
     try:
         with open(encodings_file_path, 'rb') as f:
             known_face_encodings, known_face_metadata = pickle.load(f)
@@ -33,14 +63,17 @@ def lookup_known_faces(face_encoding, known_encodings, known_metadata):
     best_match_idx = np.argmin(face_distances)
     if face_distances[best_match_idx] < 0.65:
         metadata = known_metadata[best_match_idx]
-        metadata['last_seen_time'] = dt.datetime.now()
-        is_new_interaction = (
-            (dt.datetime.now() - metadata['new_interaction_start_time']) >
-            dt.timedelta(minutes=1)
-        )
-        if is_new_interaction:
+        if 'first_seen_time' not in metadata:
+            metadata['first_seen_time'] = dt.datetime.now()
             metadata['new_interaction_start_time'] = dt.datetime.now()
-            metadata['n_interactions'] += 1
+        metadata['last_seen_time'] = dt.datetime.now()
+        # is_new_interaction = (
+        #     (dt.datetime.now() - metadata['new_interaction_start_time']) >
+        #     dt.timedelta(seconds=3)
+        # )
+        # if is_new_interaction:
+        #     metadata['new_interaction_start_time'] = dt.datetime.now()
+        #     metadata['n_interactions'] += 1
     return metadata
 
 
@@ -50,8 +83,9 @@ def register_new_face(face_encoding, face_img, known_encodings, known_metadatas)
         'first_seen_time': dt.datetime.now(),
         'new_interaction_start_time': dt.datetime.now(),
         'last_seen_time': dt.datetime.now(),
-        'n_interactions': 1,
+        # 'n_interactions': 1,
         'face_img': face_img,
+        'face_label': None,
     })
 
 
@@ -63,6 +97,23 @@ def save_known_faces(known_encodings, known_metadatas):
         print('Known faces backed up to disk.')
 
 
+def get_gst_pipe():
+    width = 800
+    height = 600
+    flip = 2
+    gstreamer_pipe = f" \
+        nvarguscamerasrc sensor-id=0 ! \
+        video/x-raw(memory:NVMM), width=3264, height=2464, framerate=21/1, \
+            format=NV12 ! \
+        nvvidconv flip-method={flip} ! \
+        video/x-raw, width={width}, height={height}, format=BGRx ! \
+        videoconvert ! \
+        video/x-raw, format=BGR ! \
+        appsink \
+        "
+    return gstreamer_pipe
+
+
 def main():
     n_faces_since_save = 0
     img_scale_frac = 0.25
@@ -70,7 +121,9 @@ def main():
     white = (255, 255, 255)
     label_font = cv.FONT_HERSHEY_DUPLEX
     known_encodings, known_metadatas = load_face_encodings()
-    vid_cap = cv.VideoCapture('./data/door.mp4')
+    gst_pipe = get_gst_pipe()
+    # vid_cap = cv.VideoCapture('./data/door.mp4')
+    vid_cap = cv.VideoCapture(gst_pipe)
     while True:
         ret_val, img = vid_cap.read()
         if not ret_val:
@@ -86,9 +139,10 @@ def main():
                 known_encodings,
                 known_metadatas,
                 )
-            if metadata is not None:
-                interaction_duration = dt.datetime.now() - metadata['new_interaction_start_time']
-                face_label = f"At door {int(interaction_duration.total_seconds())}s"
+            if metadata is not None:  # Found a match
+                # interaction_duration = dt.datetime.now() - metadata['new_interaction_start_time']
+                # face_label = f"At door {int(interaction_duration.total_seconds())}s"
+                face_label = f"{metadata['face_label']}"
             else:
                 face_label = 'New visitor'
                 top, right, bottom, left = face_location
@@ -112,4 +166,5 @@ def main():
 
 
 if __name__ == '__main__':
+    # create_face_encoding()
     main()
